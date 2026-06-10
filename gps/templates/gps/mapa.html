@@ -292,7 +292,7 @@ async function actualizarGPS() {
         if (!marcadorGPS) {
             marcadorGPS = L.marker(pos, { icon: iconoGPS() })
                 .addTo(mapa)
-                .bindPopup('📍 Posición GPS en tiempo real');
+                .bindPopup(' Posición GPS en tiempo real');
         } else {
             marcadorGPS.setLatLng(pos);
         }
