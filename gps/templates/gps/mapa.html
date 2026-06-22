@@ -1,752 +1,583 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>GPS Rutas Inteligentes</title>
-
-  <!-- Leaflet CSS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-
+  <title>Sauro GPS</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-
     body {
-      font-family: 'Segoe UI', sans-serif;
       background: #0f1117;
-      color: #e0e0e0;
-      display: flex;
-      height: 100vh;
+      color: white;
       overflow: hidden;
     }
 
-    /* ── PANEL LATERAL ── */
-    #panel {
-      width: 340px;
-      min-width: 340px;
+    #mapa {
+      height: 100vh;
+      width: 100vw;
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 1;
+    }
+
+    .navbar {
       background: #1a1d27;
-      display: flex;
-      flex-direction: column;
-      overflow-y: auto;
-      z-index: 1000;
-      border-right: 1px solid #2e3347;
+      height: 70px;
+      padding: 0 20px;
+      border-bottom: 2px solid #1976d2;
+      z-index: 2000;
+      position: relative;
     }
 
-    #panel-header {
-      background: linear-gradient(135deg, #1e3a5f, #0d47a1);
-      padding: 18px 20px;
-    }
-
-    #panel-header h1 {
-      font-size: 17px;
-      font-weight: 700;
-      letter-spacing: 0.5px;
-    }
-
-    #panel-header p {
-      font-size: 12px;
-      color: #90caf9;
-      margin-top: 3px;
-    }
-
-    .seccion {
-      padding: 14px 16px;
-      border-bottom: 1px solid #2e3347;
-    }
-
-    .seccion h3 {
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      color: #90caf9;
-      margin-bottom: 10px;
-    }
-
-    label {
-      font-size: 12px;
-      color: #aab;
-      display: block;
-      margin-bottom: 3px;
-      margin-top: 8px;
-    }
-
-    select, input[type=text], input[type=number] {
-      width: 100%;
-      background: #252836;
+    .panel-flotante {
+      position: absolute;
+      top: 90px;
+      background: rgba(26, 29, 39, 0.95);
       border: 1px solid #3a3f55;
-      border-radius: 6px;
-      color: #e0e0e0;
-      padding: 7px 10px;
-      font-size: 13px;
-      outline: none;
+      padding: 15px;
+      border-radius: 8px;
+      z-index: 1000;
+      width: 300px;
     }
 
-    select:focus, input:focus {
-      border-color: #1976d2;
+    #overlay-resultados {
+      position: absolute;
+      top: 80px;
+      left: 20px;
+      background: rgba(26, 29, 39, 0.95);
+      border: 1px solid #3a3f55;
+      padding: 15px;
+      border-radius: 8px;
+      z-index: 1000;
+      width: 300px;
+      /* IMPORTANTE: esto asegura que el contenido sea visible y no se desborde */
+      color: white;
+      pointer-events: auto;
     }
 
-    /* ── BOTONES ── */
-    .btn {
-      width: 100%;
-      padding: 9px;
-      border: none;
-      border-radius: 7px;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      margin-top: 8px;
-      transition: opacity .2s;
+    #overlay-puntos {
+      right: 20px;
     }
-    .btn:hover { opacity: .85; }
-    .btn:disabled { opacity: .4; cursor: not-allowed; }
 
-    .btn-primary   { background: #1565c0; color: #fff; }
-    .btn-success   { background: #2e7d32; color: #fff; }
-    .btn-danger    { background: #b71c1c; color: #fff; }
-    .btn-secondary { background: #37474f; color: #fff; }
+    .btn-sm {
+      font-size: 12px;
+    }
 
-    /* ── PUNTOS AGREGADOS ── */
-    #lista-puntos { margin-top: 8px; }
-
-    .punto-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
+    select,
+    input {
       background: #252836;
-      border-radius: 6px;
-      padding: 6px 10px;
-      margin-bottom: 5px;
-      font-size: 12px;
+      color: white;
+      border: 1px solid #444;
+      border-radius: 4px;
+      padding: 5px;
     }
 
-    .punto-item .punto-tipo {
-      font-size: 10px;
-      padding: 2px 6px;
-      border-radius: 10px;
-      margin-left: 6px;
-    }
-
-    .tipo-origen  { background: #1b5e20; color: #a5d6a7; }
-    .tipo-destino { background: #b71c1c; color: #ef9a9a; }
-    .tipo-inter   { background: #1a237e; color: #90caf9; }
-
-    .btn-rm {
-      background: none;
-      border: none;
-      color: #ef5350;
-      cursor: pointer;
-      font-size: 14px;
-      padding: 0 4px;
-    }
-
-    /* ── RESULTADOS ── */
-    #resultados {
-      padding: 14px 16px;
-      display: none;
-    }
-
-    #resultados h3 {
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      color: #90caf9;
-      margin-bottom: 10px;
-    }
-
+    /* Estilos extras necesarios */
     .metrica {
       display: flex;
       justify-content: space-between;
-      font-size: 13px;
-      margin-bottom: 6px;
-      padding: 5px 8px;
-      background: #252836;
-      border-radius: 5px;
+      font-size: 12px;
+      margin-bottom: 5px;
     }
 
-    .metrica span:last-child { color: #64b5f6; font-weight: 600; }
-
     .alerta {
-      background: #4a1010;
-      border: 1px solid #c62828;
-      border-radius: 6px;
-      padding: 8px 10px;
-      font-size: 12px;
-      color: #ef9a9a;
-      margin-top: 8px;
+      background: #7f1d1d;
+      padding: 5px;
+      font-size: 11px;
+      margin-top: 10px;
+      border-radius: 4px;
     }
 
     .ruta-alterna-btn {
-      background: #263238;
-      border: 1px solid #455a64;
-      border-radius: 6px;
-      padding: 7px 10px;
-      font-size: 12px;
-      color: #b0bec5;
-      cursor: pointer;
-      margin-top: 5px;
+      background: #37474f;
+      border: none;
+      color: white;
       width: 100%;
-      text-align: left;
-      transition: background .2s;
-    }
-    .ruta-alterna-btn:hover { background: #37474f; }
-    .ruta-alterna-btn.activa { border-color: #ff8f00; color: #ffcc02; }
-
-    /* ── ESTADO VEHÍCULO ── */
-    #barra-combustible-wrap {
-      background: #252836;
-      border-radius: 6px;
-      height: 10px;
-      overflow: hidden;
       margin-top: 5px;
+      font-size: 11px;
+      padding: 5px;
     }
 
-    #barra-combustible {
-      height: 100%;
-      background: linear-gradient(90deg, #c62828, #f9a825, #2e7d32);
-      transition: width .5s;
-    }
-
-    /* ── MAPA ── */
-    #mapa {
-      flex: 1;
-      height: 100vh;
-    }
-
-    /* ── LOADER ── */
     #loader {
       display: none;
       position: fixed;
       inset: 0;
-      background: rgba(0,0,0,.6);
+      background: rgba(0, 0, 0, .6);
       z-index: 9999;
       align-items: center;
       justify-content: center;
       flex-direction: column;
-      gap: 12px;
     }
 
-    #loader.visible { display: flex; }
-
-    .spinner {
-      width: 44px; height: 44px;
-      border: 4px solid #1976d2;
-      border-top-color: transparent;
-      border-radius: 50%;
-      animation: spin .8s linear infinite;
+    #loader.visible {
+      display: flex;
     }
-
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    #loader p { color: #90caf9; font-size: 14px; }
   </style>
 </head>
+
 <body>
 
-<!-- ── LOADER ── -->
-<div id="loader">
-  <div class="spinner"></div>
-  <p id="loader-msg">Calculando ruta con OSRM…</p>
-</div>
-
-<!-- ══════════════ PANEL LATERAL ══════════════ -->
-<div id="panel">
-
-  <div id="panel-header">
-    <h1>🗺️ GPS Rutas Inteligentes</h1>
-    <p>A* · Costo Uniforme · Genético Evolutivo</p>
+  <div id="loader">
+    <div class="spinner-border text-primary"></div>
+    <p id="loader-msg">Calculando...</p>
   </div>
 
-  <!-- VEHÍCULO -->
-  <div class="seccion" id="sec-vehiculo">
-    <h3>🚗 Vehículo activo</h3>
-    <div id="info-vehiculo" style="font-size:13px; color:#aab;">Cargando…</div>
-    <div id="barra-combustible-wrap" style="display:none">
-      <div id="barra-combustible" style="width:0%"></div>
+  <nav class="navbar navbar-dark d-flex justify-content-between">
+    <div class="d-flex gap-2">
+      <select id="sel-algoritmo">{% for a in algoritmos %}<option value="{{ a.id }}">{{ a.nombre }}</option>{% endfor %}
+      </select>
+      <div class="d-flex align-items-center gap-2">
+      <input type="checkbox" id="chk-evitar-riesgo">
+      <small style="color: #ff1744;">Evitar Riesgos</small>
+    </div>
+      <div class="d-flex align-items-center"><input type="checkbox" id="chk-alternas" class="me-1">
+      </div>
+    </div>
+    
+    <h2 style="color: #64b5f6; margin:0;">SAURO</h2>
+    <div class="d-flex gap-2">
+      <button class="btn btn-danger btn-sm" onclick="limpiarPuntos()">🗑 Limpiar</button>
+      <button class="btn btn-primary btn-sm" id="btn-calcular" onclick="calcularRuta()">🔍 Calcular</button>
+      <button class="btn btn-success btn-sm" onclick="centrarGPS()">📡 GPS</button>
+    </div>
+  </nav>
+
+  <div id="overlay-resultados" class="panel-flotante" style="display:none">
+    <div id="resultados">
+      <h6>Resultados</h6>
+      <div id="metricas"></div>
+      <div id="alerta-combustible"></div>
+      <div id="lista-alternas"></div>
     </div>
   </div>
 
-  <!-- ALGORITMO -->
-  <div class="seccion">
-    <h3>⚙️ Configuración</h3>
-
-    <label>Algoritmo</label>
-    <select id="sel-algoritmo">
-      {% for a in algoritmos %}
-        <option value="{{ a.id }}">{{ a.nombre }}</option>
-      {% endfor %}
-    </select>
-
-    <label>Precio gasolina ($/L)</label>
-    <input type="number" id="precio-gasolina" value="24" min="1" step="0.5">
-
-    <label style="display:flex; align-items:center; gap:6px; margin-top:10px;">
-      <input type="checkbox" id="chk-alternas" style="width:auto">
-      Calcular rutas alternas
-    </label>
+  <div id="overlay-puntos" class="panel-flotante">
+    <h6>Puntos Seleccionados</h6>
+    <input type="text" id="nombre-punto" placeholder="Nombre punto..." class="w-100 mb-2">
+    <button class="btn btn-secondary w-100 btn-sm" onclick="agregarPuntoManual()">+ Agregar manual</button>
+    <div id="lista-puntos" class="mt-2"></div>
   </div>
 
-  <!-- AGREGAR PUNTOS -->
-  <div class="seccion">
-    <h3>📍 Puntos de ruta</h3>
-    <p style="font-size:11px; color:#667; margin-bottom:8px;">
-      Haz clic en el mapa para agregar puntos.<br>
-      El primero será el <b style="color:#a5d6a7">origen</b>,
-      el último el <b style="color:#ef9a9a">destino</b>.
-    </p>
+  <div id="mapa"></div>
 
-    <label>Nombre del punto</label>
-    <input type="text" id="nombre-punto" placeholder="Ej: Casa, CDMX, Oficina…">
-    <button class="btn btn-secondary" onclick="agregarPuntoManual()">
-      + Agregar punto manual
-    </button>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    // Inicialización Mapa
+    const mapa = L.map('mapa').setView([19.4326, -99.1332], 7);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+      subdomains: 'abcd',
+      maxZoom: 19
+    }).addTo(mapa);
 
-    <div id="lista-puntos"></div>
+    // ═══════════════════════════════════════════════════════════
+    // ESTADO GLOBAL
+    // ═══════════════════════════════════════════════════════════
+    let puntos = [];          // [{nombre, lat, lng}]
+    let marcadores = [];          // marcadores Leaflet
+    let capaRuta = null;        // polyline ruta principal
+    let capasAlternas = [];          // polylines alternas
+    let marcadorGPS = null;        // marcador posición ESP32
+    let capasCasetas = [];
+    let capasTrafico = [];
 
-    <button class="btn btn-danger" style="margin-top:10px" onclick="limpiarPuntos()">
-      🗑 Limpiar puntos
-    </button>
-  </div>
+    // Colores por algoritmo
+    const COLORES = {
+      astar: '#2196f3',
+      costo_uniforme: '#4caf50',
+      genetico: '#ff9800',
+    };
+    const COLORES_ALT = ['#ff5722', '#9c27b0'];
 
-  <!-- CALCULAR -->
-  <div class="seccion">
-    <button class="btn btn-primary" id="btn-calcular" onclick="calcularRuta()">
-      🔍 Calcular ruta óptima
-    </button>
-    <button class="btn btn-success" onclick="centrarGPS()">
-      📡 Ver posición GPS
-    </button>
-  </div>
-
-  <!-- RESULTADOS -->
-  <div id="resultados">
-    <h3>📊 Resultados</h3>
-    <div id="metricas"></div>
-    <div id="alerta-combustible"></div>
-    <div id="lista-alternas"></div>
-  </div>
-
-</div><!-- /panel -->
-
-<!-- ══════════════ MAPA ══════════════ -->
-<div id="mapa"></div>
-
-<!-- Leaflet JS -->
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-<script>
-// ═══════════════════════════════════════════════════════════
-// INICIALIZAR MAPA
-// ═══════════════════════════════════════════════════════════
-const mapa = L.map('mapa').setView([19.4326, -99.1332], 7);
-
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: '© OpenStreetMap contributors',
-  maxZoom: 19,
-}).addTo(mapa);
-
-// ═══════════════════════════════════════════════════════════
-// ESTADO GLOBAL
-// ═══════════════════════════════════════════════════════════
-let puntos          = [];          // [{nombre, lat, lng}]
-let marcadores      = [];          // marcadores Leaflet
-let capaRuta        = null;        // polyline ruta principal
-let capasAlternas   = [];          // polylines alternas
-let marcadorGPS     = null;        // marcador posición ESP32
-let capasCasetas    = [];
-let capasTrafico    = [];
-
-// Colores por algoritmo
-const COLORES = {
-  astar:          '#2196f3',
-  costo_uniforme: '#4caf50',
-  genetico:       '#ff9800',
-};
-const COLORES_ALT = ['#ff5722', '#9c27b0'];
-
-// ═══════════════════════════════════════════════════════════
-// ICONOS PERSONALIZADOS
-// ═══════════════════════════════════════════════════════════
-function iconoPunto(tipo) {
-  const colores = { origen: '#4caf50', destino: '#f44336', intermedio: '#2196f3' };
-  const color   = colores[tipo] || '#2196f3';
-  return L.divIcon({
-    className: '',
-    html: `<div style="
+    // ═══════════════════════════════════════════════════════════
+    // ICONOS PERSONALIZADOS
+    // ═══════════════════════════════════════════════════════════
+    function iconoPunto(tipo) {
+      const colores = { origen: '#4caf50', destino: '#f44336', intermedio: '#2196f3' };
+      const color = colores[tipo] || '#2196f3';
+      return L.divIcon({
+        className: '',
+        html: `<div style="
       width:14px; height:14px; border-radius:50%;
       background:${color}; border:2px solid #fff;
       box-shadow:0 0 6px rgba(0,0,0,.5)"></div>`,
-    iconAnchor: [7, 7],
-  });
-}
-
-// ═══════════════════════════════════════════════════════════
-// CLIC EN EL MAPA → AGREGAR PUNTO
-// ═══════════════════════════════════════════════════════════
-mapa.on('click', function(e) {
-  const nombre = document.getElementById('nombre-punto').value.trim()
-              || `Punto ${puntos.length + 1}`;
-  document.getElementById('nombre-punto').value = '';
-  agregarPunto(nombre, e.latlng.lat, e.latlng.lng);
-});
-
-function agregarPuntoManual() {
-  const nombre = document.getElementById('nombre-punto').value.trim();
-  if (!nombre) { alert('Escribe un nombre para el punto.'); return; }
-  // Usar centro del mapa como posición
-  const centro = mapa.getCenter();
-  agregarPunto(nombre, centro.lat, centro.lng);
-  document.getElementById('nombre-punto').value = '';
-}
-function agregarPunto(nombre, lat, lng) {
-  lat = parseFloat(lat);
-  lng = parseFloat(lng);
-
-  if (isNaN(lat) || isNaN(lng)) {
-    alert('Coordenadas inválidas.'); return;
-  }
-
-  // Evitar nombre duplicado
-  if (puntos.find(p => p.nombre === nombre)) {
-    nombre += `_${puntos.length}`;
-  }
-
-  puntos.push({ nombre, lat, lng });
-
-  const tipo = puntos.length === 1 ? 'origen' : 'intermedio';
-  const m = L.marker([lat, lng], { icon: iconoPunto(tipo) })
-    .addTo(mapa)
-    .bindPopup(`<b>${nombre}</b><br>${lat.toFixed(5)}, ${lng.toFixed(5)}`);
-  marcadores.push(m);
-
-  renderizarListaPuntos();
-}
-
-function renderizarListaPuntos() {
-  const ul = document.getElementById('lista-puntos');
-  ul.innerHTML = '';
-
-  puntos.forEach((p, i) => {
-    const tipo  = i === 0 ? 'origen' : (i === puntos.length - 1 ? 'destino' : 'inter');
-    const label = i === 0 ? 'Origen' : (i === puntos.length - 1 ? 'Destino' : 'Parada');
-
-    // Actualizar icono del marcador
-    if (marcadores[i]) {
-      marcadores[i].setIcon(iconoPunto(
-        i === 0 ? 'origen' : (i === puntos.length - 1 ? 'destino' : 'intermedio')
-      ));
+        iconAnchor: [7, 7],
+      });
     }
 
-    ul.innerHTML += `
+    // ═══════════════════════════════════════════════════════════
+    // CLIC EN EL MAPA → AGREGAR PUNTO
+    // ═══════════════════════════════════════════════════════════
+    mapa.on('click', function (e) {
+      const nombre = document.getElementById('nombre-punto').value.trim()
+        || `Punto ${puntos.length + 1}`;
+      document.getElementById('nombre-punto').value = '';
+      agregarPunto(nombre, e.latlng.lat, e.latlng.lng);
+    });
+
+    function agregarPuntoManual() {
+      const nombre = document.getElementById('nombre-punto').value.trim();
+      if (!nombre) { alert('Escribe un nombre para el punto.'); return; }
+      // Usar centro del mapa como posición
+      const centro = mapa.getCenter();
+      agregarPunto(nombre, centro.lat, centro.lng);
+      document.getElementById('nombre-punto').value = '';
+    }
+    function agregarPunto(nombre, lat, lng) {
+      lat = parseFloat(lat);
+      lng = parseFloat(lng);
+
+      if (isNaN(lat) || isNaN(lng)) {
+        alert('Coordenadas inválidas.'); return;
+      }
+
+      // Evitar nombre duplicado
+      if (puntos.find(p => p.nombre === nombre)) {
+        nombre += `_${puntos.length}`;
+      }
+
+      puntos.push({ nombre, lat, lng });
+
+      const tipo = puntos.length === 1 ? 'origen' : 'intermedio';
+      const m = L.marker([lat, lng], { icon: iconoPunto(tipo) })
+        .addTo(mapa)
+        .bindPopup(`<b>${nombre}</b><br>${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+      marcadores.push(m);
+
+      renderizarListaPuntos();
+    }
+
+    function renderizarListaPuntos() {
+      const ul = document.getElementById('lista-puntos');
+      ul.innerHTML = '';
+
+      puntos.forEach((p, i) => {
+        const tipo = i === 0 ? 'origen' : (i === puntos.length - 1 ? 'destino' : 'inter');
+        const label = i === 0 ? 'Origen' : (i === puntos.length - 1 ? 'Destino' : 'Parada');
+
+        // Actualizar icono del marcador
+        if (marcadores[i]) {
+          marcadores[i].setIcon(iconoPunto(
+            i === 0 ? 'origen' : (i === puntos.length - 1 ? 'destino' : 'intermedio')
+          ));
+        }
+
+        ul.innerHTML += `
       <div class="punto-item">
         <span>${p.nombre}
           <span class="punto-tipo tipo-${tipo}">${label}</span>
         </span>
         <button class="btn-rm" onclick="eliminarPunto(${i})">✕</button>
       </div>`;
-  });
-}
-
-function eliminarPunto(i) {
-  mapa.removeLayer(marcadores[i]);
-  marcadores.splice(i, 1);
-  puntos.splice(i, 1);
-  renderizarListaPuntos();
-}
-
-function limpiarPuntos() {
-  marcadores.forEach(m => mapa.removeLayer(m));
-  marcadores = []; puntos = [];
-  limpiarCapasRuta();
-  document.getElementById('lista-puntos').innerHTML = '';
-  document.getElementById('resultados').style.display = 'none';
-}
-
-// ═══════════════════════════════════════════════════════════
-// CALCULAR RUTA
-// ═══════════════════════════════════════════════════════════
-async function calcularRuta() {
-  if (puntos.length < 2) {
-    alert('Agrega al menos 2 puntos (origen y destino).'); return;
-  }
-
-  const algoritmo = document.getElementById('sel-algoritmo').value;
-  const pedir_alt = document.getElementById('chk-alternas').checked;
-  const origen    = puntos[0].nombre;
-  const destino   = puntos[puntos.length - 1].nombre;
-
-  mostrarLoader(`Calculando con ${algoritmo.toUpperCase()} + OSRM…`);
-  limpiarCapasRuta();
-
-  // ── Mapear explícitamente para garantizar lat/lng ──
-  const puntos_serializados = puntos.map(p => ({
-    nombre: p.nombre,
-    lat:    parseFloat(p.lat),
-    lng:    parseFloat(p.lng),
-  }));
-
-  // ── Verificar antes de enviar ──
-  for (const p of puntos_serializados) {
-    if (isNaN(p.lat) || isNaN(p.lng)) {
-      alert(`El punto "${p.nombre}" no tiene coordenadas válidas.`);
-      ocultarLoader();
-      return;
-    }
-  }
-
-  const body = {
-    algoritmo,
-    origen,
-    destino,
-    puntos:        puntos_serializados,
-    rutas_alternas: pedir_alt,
-  };
-
-  try {
-    const resp = await fetch('/api/ruta/', {
-      method:  'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken':  getCookie('csrftoken'),
-      },
-      body: JSON.stringify(body),
-    });
-
-    const data = await resp.json();
-
-    if (data.error) {
-      alert('Error del servidor: ' + data.error);
-      return;
-    }
-
-    // Dibujar ruta principal
-    const color = COLORES[algoritmo] || '#2196f3';
-    dibujarRuta(data.polilinea, color, 5, 'Ruta principal');
-
-    if (data.polilinea && data.polilinea.length > 0) {
-      mapa.fitBounds(data.polilinea);
-    }
-
-    mostrarResultados(data, algoritmo);
-
-    // Rutas alternas
-    if (data.alternas && data.alternas.length > 0) {
-      data.alternas.forEach((alt, i) => {
-        dibujarRuta(alt.polilinea, COLORES_ALT[i] || '#795548', 3,
-                    `Alterna ${i + 1}`, true, i);
       });
-      mostrarAlternas(data.alternas);
     }
 
-  } catch (e) {
-    alert('Error de conexión: ' + e.message);
-  } finally {
-    ocultarLoader();
-  }
+    function eliminarPunto(i) {
+      mapa.removeLayer(marcadores[i]);
+      marcadores.splice(i, 1);
+      puntos.splice(i, 1);
+      renderizarListaPuntos();
+    }
+
+    function limpiarPuntos() {
+      marcadores.forEach(m => mapa.removeLayer(m));
+      marcadores = []; puntos = [];
+      limpiarCapasRuta();
+      document.getElementById('lista-puntos').innerHTML = '';
+      document.getElementById('resultados').style.display = 'none';
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // CALCULAR RUTA
+    // ═══════════════════════════════════════════════════════════
+    async function calcularRuta() {
+    if (puntos.length < 2) {
+        alert('Agrega al menos 2 puntos (origen y destino).'); 
+        return;
+    }
+
+    const algoritmo = document.getElementById('sel-algoritmo').value;
+    const chkEvitar = document.getElementById('chk-evitar-riesgo');
+    
+    // Serializar puntos
+    const puntos_serializados = puntos.map(p => ({
+        nombre: p.nombre, lat: parseFloat(p.lat), lng: parseFloat(p.lng)
+    }));
+
+    mostrarLoader(`Calculando con ${algoritmo.toUpperCase()}…`);
+    limpiarCapasRuta();
+
+    try {
+        const resp = await fetch('/api/ruta/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken'),
+            },
+            body: JSON.stringify({
+                algoritmo: algoritmo,
+                origen: puntos[0].nombre,
+                destino: puntos[puntos.length - 1].nombre,
+                puntos: puntos_serializados,
+                rutas_alternas: document.getElementById('chk-alternas').checked,
+                evitar_riesgo: chkEvitar ? chkEvitar.checked : false
+            }),
+        });
+
+        const data = await resp.json();
+        if (data.error) throw new Error(data.error);
+
+        // Dibujar
+        dibujarRuta(data.polilinea, COLORES[algoritmo] || '#2196f3', 5, 'Ruta principal');
+        if (data.polilinea?.length > 0) mapa.fitBounds(data.polilinea);
+        
+        mostrarResultados(data, algoritmo);
+    } catch (e) {
+        alert('Error: ' + e.message);
+    } finally {
+        ocultarLoader();
+    }
 }
-// ═══════════════════════════════════════════════════════════
-// DIBUJAR EN EL MAPA
-// ═══════════════════════════════════════════════════════════
-function dibujarRuta(polilinea, color, peso, label, esAlterna=false, idx=0) {
-  if (!polilinea || polilinea.length === 0) return;
+    
+    // ═══════════════════════════════════════════════════════════
+    // DIBUJAR EN EL MAPA
+    // ═══════════════════════════════════════════════════════════
+    function dibujarRuta(polilinea, color, peso, label, esAlterna = false, idx = 0) {
+      if (!polilinea || polilinea.length === 0) return;
 
-  const linea = L.polyline(polilinea, {
-    color, weight: peso, opacity: esAlterna ? 0.6 : 0.9,
-    dashArray: esAlterna ? '8,6' : null,
-  }).addTo(mapa).bindPopup(`<b>${label}</b>`);
+      const linea = L.polyline(polilinea, {
+        color, weight: peso, opacity: esAlterna ? 0.6 : 0.9,
+        dashArray: esAlterna ? '8,6' : null,
+      }).addTo(mapa).bindPopup(`<b>${label}</b>`);
 
-  if (esAlterna) capasAlternas[idx] = linea;
-  else capaRuta = linea;
-}
+      if (esAlterna) capasAlternas[idx] = linea;
+      else capaRuta = linea;
+    }
 
-function limpiarCapasRuta() {
-  if (capaRuta) { mapa.removeLayer(capaRuta); capaRuta = null; }
-  capasAlternas.forEach(c => { if(c) mapa.removeLayer(c); });
-  capasAlternas = [];
-}
+    function limpiarCapasRuta() {
+      if (capaRuta) { mapa.removeLayer(capaRuta); capaRuta = null; }
+      capasAlternas.forEach(c => { if (c) mapa.removeLayer(c); });
+      capasAlternas = [];
+    }
 
-// ═══════════════════════════════════════════════════════════
-// MOSTRAR RESULTADOS
-// ═══════════════════════════════════════════════════════════
-function mostrarResultados(data, algoritmo) {
-  document.getElementById('resultados').style.display = 'block';
+    // ═══════════════════════════════════════════════════════════
+    // MOSTRAR RESULTADOS
+    // ═══════════════════════════════════════════════════════════
+    function mostrarResultados(data, algoritmo) {
+      // Aseguramos que el contenedor sea visible
+      const overlay = document.getElementById('overlay-resultados');
+      overlay.style.display = 'block';
 
-  const horas  = Math.floor(data.tiempo_min / 60);
-  const minutos = Math.round(data.tiempo_min % 60);
-  const tiempoStr = horas > 0
-    ? `${horas}h ${minutos}min`
-    : `${minutos} min`;
+      // Aseguramos que la sub-sección también
+      document.getElementById('resultados').style.display = 'block';
 
-  document.getElementById('metricas').innerHTML = `
+      const met = document.getElementById('metricas');
+      const hor = Math.floor(data.tiempo_min / 60);
+      const min = Math.round(data.tiempo_min % 60);
+      const tStr = hor > 0 ? `${hor}h ${min}min` : `${min} min`;
+
+      met.innerHTML = `
     <div class="metrica"><span>Algoritmo</span><span>${algoritmo}</span></div>
     <div class="metrica"><span>Distancia</span><span>${data.distancia_km} km</span></div>
-    <div class="metrica"><span>Tiempo est.</span><span>${tiempoStr}</span></div>
-    <div class="metrica"><span>Combustible</span><span>${data.combustible_L} L</span></div>
-    <div class="metrica"><span>Costo gasolina</span><span>$${data.costo_gasolina} MXN</span></div>
+    <div class="metrica"><span>Tiempo</span><span>${tStr}</span></div>
+    <hr style="border: 0; border-top: 1px solid #444; margin: 5px 0;">
+    <div class="metrica"><span>Salida</span><span>${data.hora_salida}</span></div>
+    <div class="metrica"><span>Llegada</span><span>${data.hora_llegada} <small>(${data.zona_llegada})</small></span></div>
+    <hr style="border: 0; border-top: 1px solid #444; margin: 5px 0;">
+    <div class="metrica"><span>Gasolina</span><span>${data.combustible_L.toFixed(2)} L</span></div>
+    <div class="metrica"><span>Costo</span><span>$${data.costo_gasolina.toFixed(2)}</span></div>
   `;
 
-  const alertaDiv = document.getElementById('alerta-combustible');
-  alertaDiv.innerHTML = data.alerta_combustible
-    ? `<div class="alerta">${data.alerta_combustible}</div>` : '';
-}
+      const alertaDiv = document.getElementById('alerta-combustible');
+      alertaDiv.innerHTML = data.alerta_combustible ? `<div class="alerta">${data.alerta_combustible}</div>` : '';
 
-function mostrarAlternas(alternas) {
-  const div = document.getElementById('lista-alternas');
-  div.innerHTML = '<p style="font-size:11px;color:#667;margin:8px 0 4px">Rutas alternas:</p>';
+      console.log("Resultados inyectados correctamente.");
+    }
+    function mostrarAlternas(alternas) {
+      const div = document.getElementById('lista-alternas');
+      div.innerHTML = '<p style="font-size:11px;color:#667;margin:8px 0 4px">Rutas alternas:</p>';
 
-  alternas.forEach((alt, i) => {
-    const horas   = Math.floor(alt.tiempo_min / 60);
-    const minutos = Math.round(alt.tiempo_min % 60);
-    const tiempo  = horas > 0 ? `${horas}h ${minutos}min` : `${minutos}min`;
+      alternas.forEach((alt, i) => {
+        const horas = Math.floor(alt.tiempo_min / 60);
+        const minutos = Math.round(alt.tiempo_min % 60);
+        const tiempo = horas > 0 ? `${horas}h ${minutos}min` : `${minutos}min`;
 
-    div.innerHTML += `
+        div.innerHTML += `
       <button class="ruta-alterna-btn" onclick="resaltarAlterna(${i})">
         Alterna ${i + 1} — ${alt.distancia_km} km · ${tiempo}
       </button>`;
-  });
-}
-
-function resaltarAlterna(i) {
-  capasAlternas.forEach((c, j) => {
-    if (!c) return;
-    c.setStyle({ weight: j === i ? 5 : 3, opacity: j === i ? 0.9 : 0.4 });
-  });
-  document.querySelectorAll('.ruta-alterna-btn').forEach((b, j) => {
-    b.classList.toggle('activa', j === i);
-  });
-  if (capasAlternas[i]) mapa.fitBounds(capasAlternas[i].getBounds());
-}
-
-// ═══════════════════════════════════════════════════════════
-// POSICIÓN GPS (ESP32)
-// ═══════════════════════════════════════════════════════════
-async function centrarGPS() {
-  try {
-    const resp = await fetch('/api/gps/ultima/');
-    if (!resp.ok) { alert('Sin datos GPS aún.'); return; }
-    const data = await resp.json();
-
-    if (marcadorGPS) mapa.removeLayer(marcadorGPS);
-
-    marcadorGPS = L.circleMarker([data.lat, data.lng], {
-      radius: 10, color: '#00e5ff', fillColor: '#00e5ff',
-      fillOpacity: 0.8, weight: 2,
-    }).addTo(mapa)
-      .bindPopup(`<b>📡 ESP32</b><br>${data.lat.toFixed(5)}, ${data.lng.toFixed(5)}<br>${data.timestamp}`)
-      .openPopup();
-
-    mapa.setView([data.lat, data.lng], 14);
-  } catch(e) {
-    alert('Error al obtener GPS: ' + e.message);
-  }
-}
-
-// Actualizar posición GPS cada 5 segundos
-setInterval(async () => {
-  try {
-    const resp = await fetch('/api/gps/ultima/');
-    if (!resp.ok) return;
-    const data = await resp.json();
-    if (marcadorGPS) {
-      marcadorGPS.setLatLng([data.lat, data.lng]);
+      });
     }
-  } catch(_) {}
-}, 5000);
 
-// ═══════════════════════════════════════════════════════════
-// CARGAR CASETAS Y ZONAS DE TRÁFICO
-// ═══════════════════════════════════════════════════════════
-async function cargarCapasExtras() {
-  // Casetas
-  try {
-    const r = await fetch('/api/casetas/');
-    const d = await r.json();
-    d.casetas.forEach(c => {
-      L.marker([c.latitud, c.longitud], {
-        icon: L.divIcon({
-          className: '',
-          html: `<div style="
+    function resaltarAlterna(i) {
+      capasAlternas.forEach((c, j) => {
+        if (!c) return;
+        c.setStyle({ weight: j === i ? 5 : 3, opacity: j === i ? 0.9 : 0.4 });
+      });
+      document.querySelectorAll('.ruta-alterna-btn').forEach((b, j) => {
+        b.classList.toggle('activa', j === i);
+      });
+      if (capasAlternas[i]) mapa.fitBounds(capasAlternas[i].getBounds());
+    }
+
+    async function cargarZonasRiesgo() {
+      try {
+        const resp = await fetch('/api/zonas-riesgo/');
+        const data = await resp.json();
+        data.zonas.forEach(z => {
+          L.circle([z.lat, z.lng], {
+            radius: z.radio_km * 1000,
+            color: '#ff1744',
+            fillColor: '#ff1744',
+            fillOpacity: 0.3
+          }).addTo(mapa).bindPopup(`<b>${z.nombre}</b>`);
+        });
+      } catch (e) { console.error("Error cargando zonas de riesgo"); }
+    }
+
+    // Llama a esta función en la sección de ARRANQUE
+    cargarZonasRiesgo();
+
+    // Actualiza calcularRuta() para enviar el nuevo parámetro
+    const body = {
+      // ... tus otros campos ...
+      evitar_riesgo: document.getElementById('chk-evitar-riesgo').checked
+    };
+
+    // ═══════════════════════════════════════════════════════════
+    // POSICIÓN GPS (ESP32)
+    // ═══════════════════════════════════════════════════════════
+    async function centrarGPS() {
+      try {
+        const resp = await fetch('/api/gps/ultima/');
+        if (!resp.ok) { alert('Sin datos GPS aún.'); return; }
+        const data = await resp.json();
+
+        if (marcadorGPS) mapa.removeLayer(marcadorGPS);
+
+        marcadorGPS = L.circleMarker([data.lat, data.lng], {
+          radius: 10, color: '#00e5ff', fillColor: '#00e5ff',
+          fillOpacity: 0.8, weight: 2,
+        }).addTo(mapa)
+          .bindPopup(`<b>📡 ESP32</b><br>${data.lat.toFixed(5)}, ${data.lng.toFixed(5)}<br>${data.timestamp}`)
+          .openPopup();
+
+        mapa.setView([data.lat, data.lng], 14);
+      } catch (e) {
+        alert('Error al obtener GPS: ' + e.message);
+      }
+    }
+
+    // Actualizar posición GPS cada 5 segundos
+    setInterval(async () => {
+      try {
+        const resp = await fetch('/api/gps/ultima/');
+        if (!resp.ok) return;
+        const data = await resp.json();
+        if (marcadorGPS) {
+          marcadorGPS.setLatLng([data.lat, data.lng]);
+        }
+      } catch (_) { }
+    }, 5000);
+
+    // ═══════════════════════════════════════════════════════════
+    // CARGAR CASETAS Y ZONAS DE TRÁFICO
+    // ═══════════════════════════════════════════════════════════
+    async function cargarCapasExtras() {
+      // Casetas
+      try {
+        const r = await fetch('/api/casetas/');
+        const d = await r.json();
+        d.casetas.forEach(c => {
+          L.marker([c.latitud, c.longitud], {
+            icon: L.divIcon({
+              className: '',
+              html: `<div style="
             background:#f9a825; border:2px solid #fff;
             border-radius:4px; padding:2px 5px;
             font-size:10px; font-weight:700; color:#000;
             white-space:nowrap; box-shadow:0 1px 4px rgba(0,0,0,.4)">
             💰 $${c.costo}</div>`,
-          iconAnchor: [20, 10],
-        })
-      }).addTo(mapa).bindPopup(`<b>${c.nombre}</b><br>Peaje: $${c.costo} MXN`);
-    });
-  } catch(_) {}
+              iconAnchor: [20, 10],
+            })
+          }).addTo(mapa).bindPopup(`<b>${c.nombre}</b><br>Peaje: $${c.costo} MXN`);
+        });
+      } catch (_) { }
 
-  // Zonas de tráfico
-  try {
-    const r = await fetch('/api/trafico/');
-    const d = await r.json();
-    const coloresTrafico = {
-      bajo: '#8bc34a', medio: '#ff9800', alto: '#f44336', critico: '#7b1fa2'
-    };
-    d.zonas.forEach(z => {
-      L.circle([z.latitud_centro, z.longitud_centro], {
-        radius: z.radio_km * 1000,
-        color:       coloresTrafico[z.nivel_trafico] || '#ff9800',
-        fillColor:   coloresTrafico[z.nivel_trafico] || '#ff9800',
-        fillOpacity: 0.15,
-        weight: 2,
-        dashArray: '6,4',
-      }).addTo(mapa)
-        .bindPopup(`<b>${z.nombre}</b><br>Tráfico: ${z.nivel_trafico}`);
-    });
-  } catch(_) {}
-}
-
-// ═══════════════════════════════════════════════════════════
-// ESTADO DEL VEHÍCULO
-// ═══════════════════════════════════════════════════════════
-async function cargarVehiculo() {
-  try {
-    const r = await fetch('/api/vehiculo/');
-    if (!r.ok) {
-      document.getElementById('info-vehiculo').textContent =
-        'Sin vehículo registrado. Agrégalo en el admin.';
-      return;
+      // Zonas de tráfico
+      try {
+        const r = await fetch('/api/trafico/');
+        const d = await r.json();
+        const coloresTrafico = {
+          bajo: '#8bc34a', medio: '#ff9800', alto: '#f44336', critico: '#7b1fa2'
+        };
+        d.zonas.forEach(z => {
+          L.circle([z.latitud_centro, z.longitud_centro], {
+            radius: z.radio_km * 1000,
+            color: coloresTrafico[z.nivel_trafico] || '#ff9800',
+            fillColor: coloresTrafico[z.nivel_trafico] || '#ff9800',
+            fillOpacity: 0.15,
+            weight: 2,
+            dashArray: '6,4',
+          }).addTo(mapa)
+            .bindPopup(`<b>${z.nombre}</b><br>Tráfico: ${z.nivel_trafico}`);
+        });
+      } catch (_) { }
     }
-    const v = await r.json();
-    document.getElementById('info-vehiculo').innerHTML = `
+
+    // ═══════════════════════════════════════════════════════════
+    // ESTADO DEL VEHÍCULO
+    // ═══════════════════════════════════════════════════════════
+    async function cargarVehiculo() {
+      try {
+        const r = await fetch('/api/vehiculo/');
+        if (!r.ok) {
+          document.getElementById('info-vehiculo').textContent =
+            'Sin vehículo registrado. Agrégalo en el admin.';
+          return;
+        }
+        const v = await r.json();
+        document.getElementById('info-vehiculo').innerHTML = `
       <b>${v.nombre}</b> · ${v.tipo_combustible}<br>
       Combustible: <b>${v.nivel_combustible.toFixed(0)}%</b>
       · Autonomía: <b>${v.autonomia_km} km</b>
     `;
-    document.getElementById('barra-combustible-wrap').style.display = 'block';
-    document.getElementById('barra-combustible').style.width =
-      `${v.nivel_combustible}%`;
-  } catch(_) {
-    document.getElementById('info-vehiculo').textContent =
-      'Sin vehículo registrado.';
-  }
-}
+        document.getElementById('barra-combustible-wrap').style.display = 'block';
+        document.getElementById('barra-combustible').style.width =
+          `${v.nivel_combustible}%`;
+      } catch (_) {
+        document.getElementById('info-vehiculo').textContent =
+          'Sin vehículo registrado.';
+      }
+    }
 
-// ═══════════════════════════════════════════════════════════
-// UTILIDADES
-// ═══════════════════════════════════════════════════════════
-function mostrarLoader(msg) {
-  document.getElementById('loader-msg').textContent = msg || 'Calculando…';
-  document.getElementById('loader').classList.add('visible');
-  document.getElementById('btn-calcular').disabled = true;
-}
+    // ═══════════════════════════════════════════════════════════
+    // UTILIDADES
+    // ═══════════════════════════════════════════════════════════
+    function mostrarLoader(msg) {
+      document.getElementById('loader-msg').textContent = msg || 'Calculando…';
+      document.getElementById('loader').classList.add('visible');
+      document.getElementById('btn-calcular').disabled = true;
+    }
 
-function ocultarLoader() {
-  document.getElementById('loader').classList.remove('visible');
-  document.getElementById('btn-calcular').disabled = false;
-}
+    function ocultarLoader() {
+      document.getElementById('loader').classList.remove('visible');
+      document.getElementById('btn-calcular').disabled = false;
+    }
 
-function getCookie(name) {
-  const v = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
-  return v ? v.pop() : '';
-}
+    function getCookie(name) {
+      const v = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+      return v ? v.pop() : '';
+    }
 
-// ═══════════════════════════════════════════════════════════
-// ARRANQUE
-// ═══════════════════════════════════════════════════════════
-cargarVehiculo();
-cargarCapasExtras();
-</script>
+    // ═══════════════════════════════════════════════════════════
+    // ARRANQUE
+    // ═══════════════════════════════════════════════════════════
+    cargarVehiculo();
+    cargarCapasExtras();
+  </script>
 </body>
+
 </html>

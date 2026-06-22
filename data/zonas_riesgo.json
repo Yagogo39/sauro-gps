@@ -1,0 +1,22 @@
+[
+  { "nombre": "CDMX - Iztapalapa Norte", "lat": 19.385, "lng": -99.055, "radio_km": 2.0 },
+  { "nombre": "CDMX - Tepito/Centro", "lat": 19.444, "lng": -99.130, "radio_km": 1.2 },
+  { "nombre": "CDMX - Doctores/Obrera", "lat": 19.423, "lng": -99.145, "radio_km": 1.0 },
+  { "nombre": "CDMX - GAM Cuautepec", "lat": 19.535, "lng": -99.125, "radio_km": 1.5 },
+  { "nombre": "CDMX - Tláhuac Mixquic", "lat": 19.245, "lng": -98.960, "radio_km": 2.0 },
+  { "nombre": "CDMX - Álvaro Obregón (Santa Fe)", "lat": 19.365, "lng": -99.260, "radio_km": 1.5 },
+  { "nombre": "CDMX - Xochimilco Centro", "lat": 19.260, "lng": -99.100, "radio_km": 1.2 },
+  { "nombre": "CDMX - Iztacalco (Agrícola)", "lat": 19.390, "lng": -99.075, "radio_km": 1.0 },
+  { "nombre": "CDMX - Venustiano Carranza", "lat": 19.430, "lng": -99.090, "radio_km": 1.0 },
+  { "nombre": "CDMX - Tlalpan (Ajusco)", "lat": 19.220, "lng": -99.180, "radio_km": 2.5 },
+  { "nombre": "EDOMEX - Ecatepec Centro", "lat": 19.605, "lng": -99.055, "radio_km": 2.5 },
+  { "nombre": "EDOMEX - Nezahualcóyotl Norte", "lat": 19.435, "lng": -98.990, "radio_km": 2.0 },
+  { "nombre": "EDOMEX - Naucalpan (El Molinito)", "lat": 19.475, "lng": -99.245, "radio_km": 1.5 },
+  { "nombre": "EDOMEX - Tlalnepantla Centro", "lat": 19.530, "lng": -99.190, "radio_km": 1.5 },
+  { "nombre": "EDOMEX - Chalco Centro", "lat": 19.265, "lng": -98.895, "radio_km": 2.0 },
+  { "nombre": "EDOMEX - Chimalhuacán Sur", "lat": 19.410, "lng": -98.950, "radio_km": 1.8 },
+  { "nombre": "EDOMEX - Coacalco Centro", "lat": 19.635, "lng": -99.085, "radio_km": 1.5 },
+  { "nombre": "EDOMEX - Tecámac (Ojo de Agua)", "lat": 19.675, "lng": -98.985, "radio_km": 1.5 },
+  { "nombre": "EDOMEX - Valle de Chalco", "lat": 19.285, "lng": -98.940, "radio_km": 1.8 },
+  { "nombre": "EDOMEX - Cuautitlán Izcalli", "lat": 19.660, "lng": -99.215, "radio_km": 1.5 }
+]

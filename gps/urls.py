@@ -20,4 +20,5 @@ urlpatterns = [
     # Capas del mapa
     path('api/casetas/',              views.listar_casetas,        name='casetas'),
     path('api/trafico/',              views.listar_zonas_trafico,  name='trafico'),
+    path('api/zonas-riesgo/', views.listar_zonas_riesgo, name='listar_zonas_riesgo'),
 ]

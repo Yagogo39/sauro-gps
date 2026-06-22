@@ -10,7 +10,9 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
-from pathlib import Path
+from pathlib import Path\
+import os
+import dj_database_url
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -19,13 +21,16 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-#3pc18#_8mjb5n8c=@f%m#202zjl9nt+wb19-9kmlo!pde^gxz'
+# settings.py
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# Lee la SECRET_KEY de una variable de entorno, si no existe, usa una por defecto (solo para local)
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-tu-clave-aqui-si-no-tienes-variable')
 
-ALLOWED_HOSTS = []
+# Asegúrate de que DEBUG sea False en producción
+DEBUG = os.environ.get('DEBUG', 'True') == 'True'
+
+# Configura ALLOWED_HOSTS para que funcione en cualquier lado al desplegar
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -74,11 +79,12 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+# Configuración de base de datos dinámica
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+    'default': dj_database_url.config(
+        default='sqlite:///' + os.path.join(BASE_DIR, 'db.sqlite3'),
+        conn_max_age=600
+    )
 }
 
 
@@ -128,3 +134,6 @@ GOOGLE_MAPS_API_KEY = "Crear llave de Googel Maps"
 
 #! Permitir las peticiones del Esp32 
 CORS_ALLOW_ALL_ORIGINS = True
+
+STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
