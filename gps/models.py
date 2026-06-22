@@ -133,6 +133,17 @@ class RutaPlaneada(models.Model):
     def __str__(self):
         return f"{self.nombre} | {self.algoritmo} | {self.distancia_km:.1f} km"
 
+    def estimar_consumo_gasolina(self):
+        """
+        Calcula cuántos litros se gastarán basándose en la distancia de la ruta
+        y el rendimiento definido en el vehículo.
+        """
+        if self.vehiculo and self.distancia_km:
+            # Fórmula: Distancia / Rendimiento (km/L)
+            litros = self.distancia_km / self.vehiculo.rendimiento_kmL
+            return round(litros, 2)
+        return 0.0
+
 
 # ─── 6. PUNTOS DE LA RUTA ─────────────────────────────────────────────────────
 class PuntoRuta(models.Model):

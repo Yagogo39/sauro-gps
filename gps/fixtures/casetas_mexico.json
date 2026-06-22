@@ -2,7 +2,7 @@
   {"model": "gps.caseta", "pk": 1,  "fields": {"nombre": "Caseta Tlalpan (MEX-95)",         "latitud": 19.2876, "longitud": -99.1531, "costo": 56.0,  "activa": true}},
   {"model": "gps.caseta", "pk": 2,  "fields": {"nombre": "Caseta Tres Marías (MEX-95D)",     "latitud": 19.0543, "longitud": -98.9821, "costo": 89.0,  "activa": true}},
   {"model": "gps.caseta", "pk": 3,  "fields": {"nombre": "Caseta Cuautla (MEX-160)",         "latitud": 18.9843, "longitud": -98.8432, "costo": 47.0,  "activa": true}},
-  {"model": "gps.caseta", "pk": 4,  "fields": {"nombre": "Caseta Tepotzotlán (MEX-57D)",     "latitud": 19.7154, "longitud": -99.2241, "costo": 78.0,  "activa": true}},
+  {"model": "gps.caseta", "pk": 4,  "fields": {"nombre": "Caseta Tepotzotlán (MEX-57D)",     "latitud": 19.715518161668967, "longitud": -99.20751828256341, "costo": 78.0,  "activa": true}},
   {"model": "gps.caseta", "pk": 5,  "fields": {"nombre": "Caseta Jorobas (MEX-57D)",         "latitud": 19.9012, "longitud": -99.0934, "costo": 65.0,  "activa": true}},
   {"model": "gps.caseta", "pk": 6,  "fields": {"nombre": "Caseta Querétaro Norte (MEX-57D)", "latitud": 20.6789, "longitud": -100.412, "costo": 112.0, "activa": true}},
   {"model": "gps.caseta", "pk": 7,  "fields": {"nombre": "Caseta Irapuato (MEX-45)",         "latitud": 20.6734, "longitud": -101.359, "costo": 95.0,  "activa": true}},

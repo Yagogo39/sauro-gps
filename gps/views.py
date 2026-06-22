@@ -42,15 +42,15 @@ def _zonas_riesgo_json():
 def listar_zonas_riesgo(request):
     return JsonResponse({'zonas': _zonas_riesgo_json()})
 
-# ─── HELPERS INTERNOS ─────────────────────────────────────────────────────────
 def _casetas_activas():
-    """Devuelve casetas con claves 'lat'/'lng' que espera algorithms.py"""
+    """Devuelve casetas con claves necesarias para algorithms.py"""
     casetas = Caseta.objects.filter(activa=True)
     return [
         {
-            'lat':   float(c.latitud),
-            'lng':   float(c.longitud),
-            'costo': float(c.costo),
+            'nombre': c.nombre, # <--- ¡Esto es lo que faltaba!
+            'lat':    float(c.latitud),
+            'lng':    float(c.longitud),
+            'costo':  float(c.costo),
         }
         for c in casetas
     ]
@@ -90,12 +90,13 @@ def _guardar_ruta(nombre, algoritmo, camino, coordenadas,
         algoritmo      = algoritmo,
         distancia_km   = distancia_km,
         tiempo_min     = tiempo_min,
-        combustible_L  = litros,
-        costo_gasolina = costo_gasolina,
         vehiculo       = vehiculo,
         es_alterna     = es_alterna,
         ruta_principal = ruta_principal,
     )
+
+    ruta_obj.combustible_L = ruta_obj.estimar_consumo_gasolina()
+    ruta_obj.save()
 
     tipo_map = {0: 'origen', len(camino) - 1: 'destino'}
     for idx, nombre_punto in enumerate(camino):
@@ -158,6 +159,7 @@ def recibir_gps(request):
 # CALCULAR RUTA
 # ══════════════════════════════════════════════════════════════════════════════
 @csrf_exempt
+@csrf_exempt
 def calcular_ruta(request):
     if request.method != 'POST':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
@@ -174,7 +176,6 @@ def calcular_ruta(request):
         if not puntos or not origen_key:
             return JsonResponse({'error': 'Faltan puntos u origen'}, status=400)
 
-        # Diccionario base de coordenadas
         coordenadas_base = {p['nombre']: (float(p['lat']), float(p['lng'])) for p in puntos}
         zonas_riesgo  = _zonas_riesgo_json() if evitar_riesgo else []
         casetas       = _casetas_activas()
@@ -182,78 +183,69 @@ def calcular_ruta(request):
         vehiculo      = _vehiculo_activo()
         rendimiento   = vehiculo.rendimiento_kmL if vehiculo else 12.0
 
-        camino, dist_km, tiempo_min, polilinea = ([], 0.0, 0.0, [])
-        litros, costo_gasolina = calcular_combustible(dist_km, rendimiento)
-        coords_a_usar = coordenadas_base # Por defecto
+        # Variables inicializadas
+        camino, dist_km, tiempo_min, polilinea, casetas_en_ruta = ([], 0.0, 0.0, [], [])
+        coords_a_usar = coordenadas_base
 
         # 1. Ejecución inteligente
         alternas = []
         if (pedir_alt or evitar_riesgo) and algoritmo in ['astar', 'costo_uniforme'] and destino_key:
-            alternas = rutas_alternas(
-                coordenadas_base, origen_key, destino_key,
-                casetas, zonas_trafico, zonas_riesgo, n_alternas=2
-            )
+            alternas = rutas_alternas(coordenadas_base, origen_key, destino_key, casetas, zonas_trafico, zonas_riesgo, n_alternas=2)
 
         if evitar_riesgo and alternas:
+            # Aquí capturamos el 5to valor: p_casetas
             if algoritmo == 'astar':
-                p_camino, p_dist, p_tiempo, p_poly = astar_manhattan(coordenadas_base, origen_key, destino_key, casetas, zonas_trafico, zonas_riesgo, rendimiento_kmL=rendimiento)
+                # La firma de la llamada debe ser exactamente así:
+                camino, dist_km, tiempo_min, polilinea, casetas_en_ruta = astar_manhattan(
+                coordenadas_base, origen_key, destino_key, casetas, zonas_trafico, zonas_riesgo, 
+                rendimiento_kmL=rendimiento)
             else:
-                p_camino, p_dist, p_tiempo, p_poly = costo_uniforme(coordenadas_base, origen_key, destino_key, casetas, zonas_trafico, zonas_riesgo, rendimiento_kmL=rendimiento)
+                p_camino, p_dist, p_tiempo, p_poly, p_casetas = costo_uniforme(coordenadas_base, origen_key, destino_key, casetas, zonas_trafico, zonas_riesgo, rendimiento_kmL=rendimiento)
             
-            # Comparamos
-            todas = [{'ruta': p_camino, 'distancia_km': p_dist, 'tiempo_min': p_tiempo, 'polilinea': p_poly, 'coords': coordenadas_base}] + alternas
+            todas = [{'ruta': p_camino, 'distancia_km': p_dist, 'tiempo_min': p_tiempo, 'polilinea': p_poly, 'casetas': p_casetas, 'coords': coordenadas_base}] + alternas
             mejor = min(todas, key=lambda x: x['distancia_km'])
             
-            camino, dist_km, tiempo_min, polilinea = mejor['ruta'], mejor['distancia_km'], mejor['tiempo_min'], mejor['polilinea']
-            
-            coords_a_usar = mejor.get('coords', coordenadas_base) # Usamos las coords de la ruta elegida
+            camino, dist_km, tiempo_min, polilinea, casetas_en_ruta = mejor['ruta'], mejor['distancia_km'], mejor['tiempo_min'], mejor['polilinea'], mejor.get('casetas', [])
+            coords_a_usar = mejor.get('coords', coordenadas_base)
         else:
+            # Llamadas normales capturando los 5 valores
             if algoritmo == 'astar':
-                camino, dist_km, tiempo_min, polilinea = astar_manhattan(coordenadas_base, origen_key, destino_key, casetas, zonas_trafico, zonas_riesgo, rendimiento_kmL=rendimiento)
+                camino, dist_km, tiempo_min, polilinea, casetas_en_ruta = astar_manhattan(coordenadas_base, origen_key, destino_key, casetas, zonas_trafico, zonas_riesgo, rendimiento_kmL=rendimiento)
             elif algoritmo == 'costo_uniforme':
-                camino, dist_km, tiempo_min, polilinea = costo_uniforme(coordenadas_base, origen_key, destino_key, casetas, zonas_trafico, zonas_riesgo, rendimiento_kmL=rendimiento)
+                camino, dist_km, tiempo_min, polilinea, casetas_en_ruta = costo_uniforme(coordenadas_base, origen_key, destino_key, casetas, zonas_trafico, zonas_riesgo, rendimiento_kmL=rendimiento)
             elif algoritmo == 'genetico':
                 camino, dist_km, tiempo_min, polilinea = algoritmo_genetico(coordenadas_base, origen=origen_key, casetas=casetas, zonas_trafico=zonas_trafico)
+                casetas_en_ruta = [] # Pendiente integrar en Genético
 
-        # 2. Guardado usando las coordenadas correctas (base o expandidas con desvíos)
+        litros, costo_gasolina = calcular_combustible(dist_km, rendimiento)
+        total_costo_casetas = sum(c['costo'] for c in casetas_en_ruta) # Cálculo final
+
         ruta_obj = _guardar_ruta(
             nombre=f"Ruta {algoritmo} — {origen_key} → {destino_key}",
-            algoritmo=algoritmo, 
-            camino=camino, 
-            coordenadas=coords_a_usar, # <-- AQUI ESTA LA CORRECCION
-            distancia_km=dist_km, 
-            tiempo_min=tiempo_min, 
-            vehiculo=vehiculo
+            algoritmo=algoritmo, camino=camino, coordenadas=coords_a_usar,
+            distancia_km=dist_km, tiempo_min=tiempo_min, vehiculo=vehiculo
         )
 
-        # 1. Identificar zonas (usamos el destino_key para buscar en la tabla)
-        # Si el destino no está en la tabla, usamos la de CDMX por defecto
         zona_destino_id = ZONAS_MAP.get(destino_key, 'America/Mexico_City')
         tz_destino = pytz.timezone(zona_destino_id)
-        
-        # 2. Calcular tiempos
-        tz_origen = pytz.timezone('America/Mexico_City') # Ajusta según donde esté el servidor
+        tz_origen = pytz.timezone('America/Mexico_City')
         hora_salida = datetime.now(tz_origen)
-        
-        # Calculamos la llegada sumando los minutos del algoritmo
-        # Aseguramos que tiempo_min sea un float para evitar errores
-        minutos_viaje = float(tiempo_min) if tiempo_min else 0.0
-        hora_llegada = hora_salida + timedelta(minutes=minutos_viaje)
-        
-        # Convertimos la llegada a la zona horaria del destino
+        hora_llegada = hora_salida + timedelta(minutes=float(tiempo_min or 0))
         hora_llegada_destino = hora_llegada.astimezone(tz_destino)
 
         return JsonResponse({
             'ruta_id':        ruta_obj.id,
             'camino':         camino,
             'distancia_km':   dist_km,
-            'tiempo_min':     tiempo_min if tiempo_min is not None else 0, # Protege contra NaN
-            'combustible_L':  litros,                                       # ¡Esto es lo que falta!
-            'costo_gasolina': costo_gasolina,                               # ¡Esto también!
+            'tiempo_min':     tiempo_min if tiempo_min is not None else 0,
+            'combustible_L':  litros,
+            'costo_gasolina': costo_gasolina,
+            'casetas':        casetas_en_ruta,      # Se envía al frontend
+            'costo_casetas':  total_costo_casetas,  # Se envía al frontend
             'polilinea':      polilinea,
-            'hora_salida': hora_salida.strftime("%H:%M %p"),
-            'hora_llegada': hora_llegada_destino.strftime("%H:%M %p"),
-            'zona_llegada': hora_llegada_destino.tzname(),
+            'hora_salida':    hora_salida.strftime("%H:%M %p"),
+            'hora_llegada':   hora_llegada_destino.strftime("%H:%M %p"),
+            'zona_llegada':   hora_llegada_destino.tzname(),
             'alternas':       alternas if pedir_alt else []
         })
 

@@ -138,9 +138,9 @@
     
     <h2 style="color: #64b5f6; margin:0;">SAURO</h2>
     <div class="d-flex gap-2">
-      <button class="btn btn-danger btn-sm" onclick="limpiarPuntos()">🗑 Limpiar</button>
-      <button class="btn btn-primary btn-sm" id="btn-calcular" onclick="calcularRuta()">🔍 Calcular</button>
-      <button class="btn btn-success btn-sm" onclick="centrarGPS()">📡 GPS</button>
+      <button class="btn btn-danger btn-sm" onclick="limpiarPuntos()">Limpiar</button>
+      <button class="btn btn-primary btn-sm" id="btn-calcular" onclick="calcularRuta()">Calcular</button>
+      <button class="btn btn-success btn-sm" onclick="centrarGPS()">GPS</button>
     </div>
   </nav>
 
@@ -366,35 +366,57 @@
     // MOSTRAR RESULTADOS
     // ═══════════════════════════════════════════════════════════
     function mostrarResultados(data, algoritmo) {
-      // Aseguramos que el contenedor sea visible
+      // Aseguramos que los paneles sean visibles
       const overlay = document.getElementById('overlay-resultados');
       overlay.style.display = 'block';
-
-      // Aseguramos que la sub-sección también
       document.getElementById('resultados').style.display = 'block';
 
       const met = document.getElementById('metricas');
+      
+      // Cálculo de tiempo formato legible
       const hor = Math.floor(data.tiempo_min / 60);
       const min = Math.round(data.tiempo_min % 60);
       const tStr = hor > 0 ? `${hor}h ${min}min` : `${min} min`;
 
-      met.innerHTML = `
-    <div class="metrica"><span>Algoritmo</span><span>${algoritmo}</span></div>
-    <div class="metrica"><span>Distancia</span><span>${data.distancia_km} km</span></div>
-    <div class="metrica"><span>Tiempo</span><span>${tStr}</span></div>
-    <hr style="border: 0; border-top: 1px solid #444; margin: 5px 0;">
-    <div class="metrica"><span>Salida</span><span>${data.hora_salida}</span></div>
-    <div class="metrica"><span>Llegada</span><span>${data.hora_llegada} <small>(${data.zona_llegada})</small></span></div>
-    <hr style="border: 0; border-top: 1px solid #444; margin: 5px 0;">
-    <div class="metrica"><span>Gasolina</span><span>${data.combustible_L.toFixed(2)} L</span></div>
-    <div class="metrica"><span>Costo</span><span>$${data.costo_gasolina.toFixed(2)}</span></div>
-  `;
+      // 1. Construcción del HTML base (Métricas)
+      let html = `
+        <div class="metrica"><span>Algoritmo</span><span>${algoritmo}</span></div>
+        <div class="metrica"><span>Distancia</span><span>${data.distancia_km} km</span></div>
+        <div class="metrica"><span>Tiempo</span><span>${tStr}</span></div>
+        <hr style="border: 0; border-top: 1px solid #444; margin: 5px 0;">
+        <div class="metrica"><span>Salida</span><span>${data.hora_salida}</span></div>
+        <div class="metrica"><span>Llegada</span><span>${data.hora_llegada} <small>(${data.zona_llegada})</small></span></div>
+        <hr style="border: 0; border-top: 1px solid #444; margin: 5px 0;">
+        <div class="metrica"><span>Gasolina</span><span>${data.combustible_L.toFixed(2)} L</span></div>
+        <div class="metrica"><span>Costo Comb.</span><span>$${data.costo_gasolina.toFixed(2)}</span></div>
+      `;
 
-      const alertaDiv = document.getElementById('alerta-combustible');
-      alertaDiv.innerHTML = data.alerta_combustible ? `<div class="alerta">${data.alerta_combustible}</div>` : '';
+      // 2. Sección dinámica de Casetas
+      if (data.casetas && data.casetas.length > 0) {
+        html += `
+          <hr style="border: 0; border-top: 1px solid #444; margin: 5px 0;">
+          <div style="font-size: 12px; margin-bottom:5px; color:#f9a825;"><b>Peajes en ruta (${data.casetas.length}):</b></div>
+          <ul style="padding-left: 20px; font-size: 11px; color: #ccc;">
+            ${data.casetas.map(c => `<li>${c.nombre}: $${c.costo}</li>`).join('')}
+          </ul>
+          <div class="metrica" style="font-weight:bold; font-size: 14px; color:#4caf50;">
+            <span>Total Peajes</span><span>$${data.costo_casetas.toFixed(2)}</span>
+          </div>
+        `;
+      } else {
+        html += `<div class="metrica" style="font-size: 11px; color: #888;">No hay casetas en esta ruta.</div>`;
+      }
 
-      console.log("Resultados inyectados correctamente.");
+      met.innerHTML = html;
+
+      // 3. Mostrar alternas si existen
+      if (data.alternas && data.alternas.length > 0) {
+        mostrarAlternas(data.alternas);
+      } else {
+        document.getElementById('lista-alternas').innerHTML = '';
+      }
     }
+    
     function mostrarAlternas(alternas) {
       const div = document.getElementById('lista-alternas');
       div.innerHTML = '<p style="font-size:11px;color:#667;margin:8px 0 4px">Rutas alternas:</p>';

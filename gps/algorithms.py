@@ -127,11 +127,32 @@ def _factor_riesgo(lat, lon, zonas_riesgo):
             return 50.0 
     return 1.0
 
+def obtener_casetas_cercanas(lat1, lon1, lat2, lon2, casetas, umbral_km=2.0):
+    """
+    Identifica qué casetas están cerca del segmento (lat1, lon1) -> (lat2, lon2).
+    Retorna (costo_acumulado, lista_casetas_encontradas)
+    """
+    total_costo = 0.0
+    encontradas = []
+    
+    for c in casetas:
+        # Distancia del segmento a la caseta
+        d1 = _distancia_euclidiana(lat1, lon1, c['lat'], c['lng'])
+        d2 = _distancia_euclidiana(lat2, lon2, c['lat'], c['lng'])
+        
+        if min(d1, d2) < umbral_km:
+            total_costo += c['costo']
+            # Evitar duplicados si la caseta aparece en múltiples segmentos
+            if c not in encontradas:
+                encontradas.append(c)
+                
+    return total_costo, encontradas
+
+
 def _costo_segmento(nombre_a, nombre_b, coordenadas,
                     casetas=None, zonas_trafico=None, zonas_riesgo=None,
                     precio_gasolina=20.0, rendimiento_kmL=12.0):
     
-    # Aseguramos que los valores sean listas si llegan como None
     casetas       = casetas or []
     zonas_trafico = zonas_trafico or []
     zonas_riesgo  = zonas_riesgo or []
@@ -142,12 +163,22 @@ def _costo_segmento(nombre_a, nombre_b, coordenadas,
     # Obtenemos la distancia real (física)
     dist_km, dur_min = osrm_distancia(lat1, lon1, lat2, lon2)
     
-    # Costo base para el algoritmo
-    costo_busqueda = dist_km
+    # --- 1. Penalización y DETECCIÓN de casetas ---
+    casetas_en_segmento = []
+    penalizacion_casetas = 0.0
     
-    # 1. Penalización por casetas
-    costo_busqueda += _penalizacion_casetas(lat1, lon1, lat2, lon2, casetas) / 10.0
+    for c in casetas:
+        # Usamos _distancia_euclidiana para ver si la caseta está cerca del segmento
+        d1 = _distancia_euclidiana(lat1, lon1, c['lat'], c['lng'])
+        d2 = _distancia_euclidiana(lat2, lon2, c['lat'], c['lng'])
+        
+        # Si la caseta está a menos de 2km de cualquiera de los extremos del segmento
+        if min(d1, d2) < 2.0:
+            penalizacion_casetas += c['costo']
+            casetas_en_segmento.append(c)
 
+    costo_busqueda = dist_km + (penalizacion_casetas / 10.0)
+    
     # 2. Factor de tráfico
     lat_mid = (lat1 + lat2) / 2
     lon_mid = (lon1 + lon2) / 2
@@ -157,118 +188,103 @@ def _costo_segmento(nombre_a, nombre_b, coordenadas,
     factor_riesgo = _factor_riesgo(lat_mid, lon_mid, zonas_riesgo)
     costo_busqueda *= factor_riesgo
 
-    return costo_busqueda, dist_km, dur_min
+    # Retornamos también la lista de casetas encontradas
+    return costo_busqueda, dist_km, dur_min, casetas_en_segmento
+
 # ══════════════════════════════════════════════════════════════════════════════
 # ALGORITMO 1 — A* CON HEURÍSTICA MANHATTAN
 # ══════════════════════════════════════════════════════════════════════════════
-def astar_manhattan(coordenadas, origen, destino,
-                    casetas=None, zonas_trafico=None, zonas_riesgo=None,
-                    precio_gasolina=20.0, rendimiento_kmL=12.0):
-    
-    casetas       = casetas or []
-    zonas_trafico = zonas_trafico or []
-    zonas_riesgo  = zonas_riesgo or []
+# ... (mantén tus funciones osrm_distancia, osrm_geometria, etc.) ...
 
+def astar_manhattan(coordenadas, origen, destino, casetas=None, zonas_trafico=None, zonas_riesgo=None, precio_gasolina=20.0, rendimiento_kmL=12.0):
+    casetas = casetas or []
+    zonas_trafico = zonas_trafico or []
+    zonas_riesgo = zonas_riesgo or []
     lat_d, lon_d = coordenadas[destino]
 
-    # Heap almacena: (f, g, nombre_nodo, camino, dist_real_acumulada)
     heap = []
-    heapq.heappush(heap, (0.0, 0.0, origen, [origen], 0.0))
-
-    visitados    = {}   # nombre → mejor g conocido
+    heapq.heappush(heap, (0.0, 0.0, origen, [origen], 0.0, []))
+    visitados = {}
     
-    # Variables finales
-    camino_final = []
-    dist_total_real = 0.0
-    tiempo_total = 0.0
+    camino_final, dist_total_real, tiempo_total, casetas_finales = [], 0.0, 0.0, []
 
     while heap:
-        f, g, nodo_actual, camino, dist_real = heapq.heappop(heap)
-
-        if nodo_actual in visitados and visitados[nodo_actual] <= g:
-            continue
+        f, g, nodo_actual, camino, dist_real, casetas_acum = heapq.heappop(heap)
+        if nodo_actual in visitados and visitados[nodo_actual] <= g: continue
         visitados[nodo_actual] = g
 
         if nodo_actual == destino:
-            camino_final = camino
-            dist_total_real = dist_real
+            camino_final, dist_total_real, casetas_finales = camino, dist_real, casetas_acum
             break
 
-        # Expandir hacia todos los vecinos conocidos
         for vecino in coordenadas.keys():
-            if vecino == nodo_actual:
-                continue
-
-            # costo_seg es penalizado, dist_seg es real
-            costo_seg, dist_seg, dur_seg = _costo_segmento(
-                nodo_actual, vecino, coordenadas,
-                casetas, zonas_trafico, zonas_riesgo,
-                precio_gasolina, rendimiento_kmL
-            )
-
+            if vecino == nodo_actual: continue
+            costo_seg, dist_seg, dur_seg, casetas_seg = _costo_segmento(nodo_actual, vecino, coordenadas, casetas, zonas_trafico, zonas_riesgo)
             nuevo_g = g + costo_seg
             lat_b, lon_b = coordenadas[vecino]
-            h = heuristica_manhattan(lat_b, lon_b, lat_d, lon_d)
-            nuevo_f = nuevo_g + h
+            nuevo_f = nuevo_g + heuristica_manhattan(lat_b, lon_b, lat_d, lon_d)
+            
+            nuevas_casetas = list({(c.get('nombre') or f"{c['lat']}_{c['lng']}"): c for c in (casetas_acum + casetas_seg)}.values())
 
             if vecino not in visitados or visitados.get(vecino, float('inf')) > nuevo_g:
-                heapq.heappush(heap, (nuevo_f, nuevo_g, vecino, camino + [vecino], dist_real + dist_seg))
+                heapq.heappush(heap, (nuevo_f, nuevo_g, vecino, camino + [vecino], dist_real + dist_seg, nuevas_casetas))
 
-    # Obtener geometría y tiempo total basados en la ruta ganadora
     polilinea = []
     for i in range(len(camino_final) - 1):
         lat1, lon1 = coordenadas[camino_final[i]]
         lat2, lon2 = coordenadas[camino_final[i + 1]]
         _, dur, poly_seg = osrm_geometria(lat1, lon1, lat2, lon2)
         polilinea.extend(poly_seg)
-        if dur:
-            tiempo_total += dur
+        if dur: tiempo_total += dur
 
-    return camino_final, round(dist_total_real, 2), round(tiempo_total, 1), polilinea
+    return camino_final, round(dist_total_real, 2), round(tiempo_total, 1), polilinea, casetas_finales
+
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # ALGORITMO 2 — COSTO UNIFORME (UCS / DIJKSTRA)
 # ══════════════════════════════════════════════════════════════════════════════
 def costo_uniforme(coordenadas, origen, destino,
-                    casetas=None, zonas_trafico=None, zonas_riesgo=None,
-                    precio_gasolina=20.0, rendimiento_kmL=12.0):
-    """
-    UCS: expande siempre el nodo de menor costo acumulado g(n).
-    No usa heurística — garantiza el camino de menor costo real.
-
-    Retorna (ruta, distancia_km_total, tiempo_min_total, polilinea)
-    """
+                   casetas=None, zonas_trafico=None, zonas_riesgo=None,
+                   precio_gasolina=20.0, rendimiento_kmL=12.0):
+    
     casetas       = casetas or []
     zonas_trafico = zonas_trafico or []
-    zonas_riesgo  = zonas_riesgo or []  # <-- Inicializa
+    zonas_riesgo  = zonas_riesgo or []
 
     heap = []
-    heapq.heappush(heap, (0.0, origen, [origen]))
+    # Almacenamos: (g, nodo, camino, casetas_acumuladas)
+    heapq.heappush(heap, (0.0, origen, [origen], []))
 
-    visitados    = {}
+    visitados = {}
     tiempo_total = 0.0
-    camino       = [origen]
+    camino = [origen]
+    casetas_finales = []
 
     while heap:
-        g, nodo_actual, camino = heapq.heappop(heap)
+        g, nodo_actual, camino, casetas_acum = heapq.heappop(heap)
 
-        if nodo_actual in visitados:
-            continue
+        if nodo_actual in visitados: continue
         visitados[nodo_actual] = g
 
         if nodo_actual == destino:
+            casetas_finales = casetas_acum
             break
 
         for vecino in coordenadas:
-            if vecino == nodo_actual or vecino in visitados:
-                continue
+            if vecino == nodo_actual or vecino in visitados: continue
 
-            costo_seg, _, _ = _costo_segmento(
+            # AQUÍ ESTABA EL ERROR: Ahora recibimos 4 valores
+            costo_seg, _, _, casetas_seg = _costo_segmento(
                 nodo_actual, vecino, coordenadas,
                 casetas, zonas_trafico, zonas_riesgo,
                 precio_gasolina, rendimiento_kmL
             )
-            heapq.heappush(heap, (g + costo_seg, vecino, camino + [vecino]))
+            
+            # Acumulamos casetas
+            nuevas_casetas = list({(c.get('nombre') or f"{c['lat']}_{c['lng']}"): c for c in (casetas_acum + casetas_seg)}.values())
+            
+            heapq.heappush(heap, (g + costo_seg, vecino, camino + [vecino], nuevas_casetas))
 
     # Geometría
     polilinea = []
@@ -277,12 +293,12 @@ def costo_uniforme(coordenadas, origen, destino,
         lat2, lon2 = coordenadas[camino[i + 1]]
         _, dur, poly_seg = osrm_geometria(lat1, lon1, lat2, lon2)
         polilinea.extend(poly_seg)
-        if dur:
-            tiempo_total += dur
+        if dur: tiempo_total += dur
 
     dist_total = visitados.get(destino, 0.0)
-    return camino, round(dist_total, 2), round(tiempo_total, 1), polilinea
-
+    
+    # IMPORTANTE: Retornamos los 5 valores ahora
+    return camino, round(dist_total, 2), round(tiempo_total, 1), polilinea, casetas_finales
 
 # ══════════════════════════════════════════════════════════════════════════════
 # ALGORITMO 3 — GENÉTICO EVOLUTIVO (TSP multi-destino)
@@ -432,45 +448,19 @@ def calcular_combustible(distancia_km, rendimiento_kmL, precio_litro=20.0):
 
 def rutas_alternas(coordenadas, origen, destino, casetas=None, zonas_trafico=None, zonas_riesgo=None, n_alternas=2):
     alternas = []
-    zonas_riesgo = zonas_riesgo or []
+    ruta_principal, _, _, _, _ = astar_manhattan(coordenadas, origen, destino, casetas, zonas_trafico, zonas_riesgo)
     
-    # 1. Obtenemos la ruta principal
-    ruta_principal, _, _, _ = astar_manhattan(coordenadas, origen, destino, casetas, zonas_trafico, zonas_riesgo)
-    
-    # 2. Generamos puntos de desvío si detectamos riesgo
-    # Esto crea puntos "fantasma" que el algoritmo usará para rodear la zona
-    puntos_desvio = []
-    for z in zonas_riesgo:
-        # Creamos puntos en los bordes de la zona de riesgo
-        lat_borde = z['lat'] + (z['radio_km'] / 111.0)
-        lon_borde = z['lng'] + (z['radio_km'] / 111.0)
-        puntos_desvio.append((lat_borde, lon_borde))
-
-    # 3. Intentamos calcular rutas pasando por los puntos de desvío
-    for i, punto in enumerate(puntos_desvio):
+    for i, z in enumerate(zonas_riesgo):
         if i >= n_alternas: break
-        
-        # Clonamos coordenadas y agregamos el punto de desvío como "Punto_Desvio_X"
         coords_alt = coordenadas.copy()
         nombre_desvio = f"Desvio_{i}"
-        coords_alt[nombre_desvio] = punto
+        coords_alt[nombre_desvio] = (z['lat'] + 0.05, z['lng'] + 0.05)
         
-        # Calculamos A* forzando el paso por este punto
-        ruta_alt, dist_alt, tiempo_alt, poly_alt = astar_manhattan(
-            coords_alt, origen, destino, casetas, zonas_trafico, zonas_riesgo
-        )
+        ruta_alt, dist_alt, tiempo_alt, poly_alt, casetas_alt = astar_manhattan(coords_alt, origen, destino, casetas, zonas_trafico, zonas_riesgo)
         
         if ruta_alt != ruta_principal:
-            alternas.append({
-                'ruta': ruta_alt,
-                'distancia_km': dist_alt,
-                'tiempo_min': tiempo_alt,
-                'polilinea': poly_alt,
-                'coords': coords_alt,
-            })
-            
+            alternas.append({'ruta': ruta_alt, 'distancia_km': dist_alt, 'tiempo_min': tiempo_alt, 'polilinea': poly_alt, 'casetas': casetas_alt})
     return alternas
-
 def crear_matriz_distancias(coordenadas):
     nombres = list(coordenadas.keys())
     matriz = {}
