@@ -10,7 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
-from pathlib import Path\
+from pathlib import Path
 import os
 import dj_database_url
 
@@ -135,5 +135,4 @@ GOOGLE_MAPS_API_KEY = "Crear llave de Googel Maps"
 #! Permitir las peticiones del Esp32 
 CORS_ALLOW_ALL_ORIGINS = True
 
-STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
